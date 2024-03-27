@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>绘制图片</title>
+    <style>
+      canvas {
+        border: 1px solid red;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <canvas id="canvas1" width="1000" height="700"></canvas>
+    </div>
+    <script>
+      const canvas1 = document.querySelector("#canvas1");
+      const ctx1 = canvas1.getContext("2d");
+      let width = 1000;
+      let height = 700;
+
+      let img = new Image();
+      img.src = "./bg.png";
+      img.onload = function () {
+        draw();
+      };
+
+      function draw() {
+        console.log("draw");
+        ctx1.drawImage(img, 0, 0, width, height);
+      }
+    </script>
+  </body>
+</html>

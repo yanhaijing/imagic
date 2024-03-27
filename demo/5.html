@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>绘制标注</title>
+    <style>
+      canvas {
+        border: 1px solid red;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <canvas id="canvas1" width="1000" height="700"></canvas>
+    </div>
+    <script>
+      const canvas1 = document.querySelector("#canvas1");
+      const ctx1 = canvas1.getContext("2d");
+      let width = 1000;
+      let height = 700;
+
+      let img = new Image();
+      img.src = "./bg.png";
+      img.onload = function () {
+        draw();
+      };
+
+      let scale = 1;
+      let scaleX = 0;
+      let scaleY = 0;
+      let translateX = 0;
+      let translateY = 0;
+      let rects = [
+        {
+          x: 650,
+          y: 350,
+          width: 100,
+          height: 100,
+          isEditing: false,
+          rotatable: true,
+          rotateAngle: 30,
+        },
+      ];
+
+      function draw() {
+        console.log("draw");
+        ctx1.clearRect(0, 0, width, height);
+        ctx1.save();
+        ctx1.translate(scaleX, scaleY);
+        ctx1.scale(scale, scale);
+        ctx1.translate(-scaleX, -scaleY);
+        ctx1.translate(translateX, translateY);
+
+        ctx1.drawImage(img, 0, 0, width, height);
+
+        rects.forEach((r) => {
+          ctx1.strokeStyle = r.isEditing
+            ? "rgba(255, 0, 0, 0.5)"
+            : "rgba(255, 0, 0)";
+
+          ctx1.save();
+          if (r.rotatable) {
+            ctx1.translate(r.x + r.width / 2, r.y + r.height / 2);
+            ctx1.rotate((r.rotateAngle * Math.PI) / 180);
+            ctx1.translate(-(r.x + r.width / 2), -(r.y + r.height / 2));
+          }
+          // vx = x * scale + scaleX - scaleX * scale + translateX * scale
+          // vx = x * scale + scaleX * (1 - scale) + translateX * scale
+          // x = (vx - scaleX * (1 - scale) - translateX * scale) / scale
+          ctx1.strokeRect(r.x, r.y, r.width, r.height);
+          ctx1.restore();
+        });
+
+        ctx1.restore();
+      }
+
+      // translate canvas
+      document.addEventListener(
+        "wheel",
+        function (event) {
+          if (!event.ctrlKey) {
+            // console.log("translate", event.deltaX, event.deltaY);
+            event.preventDefault();
+            translateX -= event.deltaX;
+            translateY -= event.deltaY;
+            draw();
+          }
+        },
+        { passive: false }
+      );
+
+      // zoom
+      document.addEventListener(
+        "wheel",
+        function (event) {
+          if (event.ctrlKey) {
+            // detect pinch
+            event.preventDefault(); // prevent zoom
+            if (event.deltaY < 0) {
+              console.log("Pinching in");
+              if (scale < 3) {
+                scaleX = event.offsetX;
+                scaleY = event.offsetY;
+                scale = Math.min(scale + 0.1, 3);
+                draw();
+              }
+            } else {
+              console.log("Pinching out");
+              if (scale > 1) {
+                scaleX = event.offsetX;
+                scaleY = event.offsetY;
+                scale = Math.max(scale - 0.1, 1);
+                draw();
+              }
+            }
+          }
+        },
+        { passive: false }
+      );
+    </script>
+  </body>
+</html>

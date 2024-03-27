@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>添加标注</title>
+    <style>
+      canvas {
+        border: 1px solid red;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <canvas id="canvas1" width="1000" height="700"></canvas>
+    </div>
+    <script>
+      const canvas1 = document.querySelector("#canvas1");
+      const ctx1 = canvas1.getContext("2d");
+      let width = 1000;
+      let height = 700;
+
+      let img = new Image();
+      img.src = "./bg.png";
+      img.onload = function () {
+        draw();
+      };
+
+      let scale = 1;
+      let scaleX = 0;
+      let scaleY = 0;
+      let translateX = 0;
+      let translateY = 0;
+      let rects = [
+        {
+          x: 650,
+          y: 350,
+          width: 100,
+          height: 100,
+          isEditing: false,
+          rotatable: true,
+          rotateAngle: 30,
+        },
+      ];
+      let drawingRect = null;
+      let startX = 0;
+      let startY = 0;
+
+      function computexy(x, y) {
+        const xy = {
+          // x: x / scale - translateX,
+          // y: y / scale - translateY,
+          x: (x - scaleX * (1 - scale) - translateX * scale) / scale,
+          y: (y - scaleY * (1 - scale) - translateY * scale) / scale,
+        };
+        return xy;
+      }
+      function computewh(width, height) {
+        return {
+          width: width / scale,
+          height: height / scale,
+        };
+      }
+      function computeRect(rect) {
+        const cr = {
+          ...computexy(rect.x, rect.y),
+          ...computewh(rect.width, rect.height),
+        };
+        // console.log("computeRect", rect, cr);
+        return cr;
+      }
+
+      canvas1.addEventListener("mousedown", (e) => {
+        startX = e.offsetX;
+        startY = e.offsetY;
+        const { x, y } = computexy(e.offsetX, e.offsetY);
+
+        console.log("mousedown", e.offsetX, e.offsetY, x, y);
+
+        drawingRect = drawingRect || {};
+      });
+      canvas1.addEventListener("mousemove", (e) => {
+        // 绘制中
+        if (drawingRect) {
+          drawingRect = computeRect({
+            x: startX,
+            y: startY,
+            width: e.offsetX - startX,
+            height: e.offsetY - startY,
+          });
+          draw();
+          return;
+        }
+      });
+      canvas1.addEventListener("mouseup", (e) => {
+        if (drawingRect) {
+          drawingRect = null;
+          // 如果绘制的矩形太小，则不添加，防止原地点击时添加矩形
+          // 如果反向绘制，则调整为正向
+          const width = Math.abs(e.offsetX - startX);
+          const height = Math.abs(e.offsetY - startY);
+          if (width > 1 || height > 1) {
+            const newrect = computeRect({
+              x: Math.min(startX, e.offsetX),
+              y: Math.min(startY, e.offsetY),
+              width,
+              height,
+            });
+            rects.push(newrect);
+            draw();
+          }
+          return;
+        }
+      });
+
+      function draw() {
+        console.log("draw");
+        ctx1.clearRect(0, 0, width, height);
+        ctx1.save();
+        ctx1.translate(scaleX, scaleY);
+        ctx1.scale(scale, scale);
+        ctx1.translate(-scaleX, -scaleY);
+        ctx1.translate(translateX, translateY);
+
+        ctx1.drawImage(img, 0, 0, width, height);
+
+        rects.forEach((r) => {
+          ctx1.strokeStyle = r.isEditing
+            ? "rgba(255, 0, 0, 0.5)"
+            : "rgba(255, 0, 0)";
+
+          ctx1.save();
+          if (r.rotatable) {
+            ctx1.translate(r.x + r.width / 2, r.y + r.height / 2);
+            ctx1.rotate((r.rotateAngle * Math.PI) / 180);
+            ctx1.translate(-(r.x + r.width / 2), -(r.y + r.height / 2));
+          }
+          // vx = x * scale + scaleX - scaleX * scale + translateX * scale
+          // vx = x * scale + scaleX * (1 - scale) + translateX * scale
+          // x = (vx - scaleX * (1 - scale) - translateX * scale) / scale
+          ctx1.strokeRect(r.x, r.y, r.width, r.height);
+          ctx1.restore();
+        });
+
+        if (drawingRect) {
+          ctx1.strokeRect(
+            drawingRect.x,
+            drawingRect.y,
+            drawingRect.width,
+            drawingRect.height
+          );
+        }
+
+        ctx1.restore();
+      }
+
+      // translate canvas
+      document.addEventListener(
+        "wheel",
+        function (event) {
+          if (!event.ctrlKey) {
+            // console.log("translate", event.deltaX, event.deltaY);
+            event.preventDefault();
+            translateX -= event.deltaX;
+            translateY -= event.deltaY;
+            draw();
+          }
+        },
+        { passive: false }
+      );
+
+      // zoom
+      document.addEventListener(
+        "wheel",
+        function (event) {
+          if (event.ctrlKey) {
+            // detect pinch
+            event.preventDefault(); // prevent zoom
+            if (event.deltaY < 0) {
+              console.log("Pinching in");
+              if (scale < 3) {
+                scaleX = event.offsetX;
+                scaleY = event.offsetY;
+                scale = Math.min(scale + 0.1, 3);
+                draw();
+              }
+            } else {
+              console.log("Pinching out");
+              if (scale > 1) {
+                scaleX = event.offsetX;
+                scaleY = event.offsetY;
+                scale = Math.max(scale - 0.1, 1);
+                draw();
+              }
+            }
+          }
+        },
+        { passive: false }
+      );
+    </script>
+  </body>
+</html>
